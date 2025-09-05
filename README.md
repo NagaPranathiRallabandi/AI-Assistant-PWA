@@ -1,1 +1,2 @@
 # VisionMate
+An AI-powered assistant for the visually impaired that describes surroundings, recognizes emotions, reads text, and identifies currency, making the world more accessible through voice interaction.    
