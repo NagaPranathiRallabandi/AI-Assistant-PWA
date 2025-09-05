@@ -3,22 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Accessibility Assistant</title>
+    <title>VisionMate</title>
+    <link rel="icon" href="Assets/icon-512.png">
+    
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
 </head>
 <body>
-    <div id="loading">Loading AI Models...</div>
+    <div id="loading">Loading...</div>
     <video id="video" autoplay playsinline></video>
-    <button id="analyzeButton">Analyze Scene</button>
-
-    <script src="script.js"></script>
+    
+    <div class="button-container">
+        <button id="voiceButton" title="Use Voice Command">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+            </svg>
+        </button>
+        <button id="analyzeButton">Analyze Scene</button>
+    </div>
+    
+    <script type="module" src="script.js"></script>
 
     <script>
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js')
-          .then(() => console.log('Service Worker Registered'));
-      }
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => console.log('Service Worker registered!'))
+                    .catch(err => console.error('Service Worker registration failed: ', err));
+            });
+        }
     </script>
 </body>
 </html>
