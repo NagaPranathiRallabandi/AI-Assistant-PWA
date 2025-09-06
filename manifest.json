@@ -1,11 +1,11 @@
 {
   "name": "Accessibility Assistant",
-  "short_name": "Assistant",
+  "short_name": "VisionMate",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
   "icons": [
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "Assets/icon-512.png", "sizes": "512x512", "type": "image/png" }
   ]
 }

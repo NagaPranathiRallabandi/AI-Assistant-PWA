@@ -10,20 +10,19 @@ window.addEventListener('DOMContentLoaded', () => {
     const loadingDiv = document.getElementById('loading');
     
     let isBusy = false;
-    let currentCompassHeading = 0; // Variable to store the phone's compass direction
+    let currentCompassHeading = 0;
     
     // ⚠️ IMPORTANT: Paste your actual API key here!
-    const API_KEY = "AIzaSyDe6kxxxGQH3SBDoeFpeP6nwT0KohyANSc";
+    const API_KEY = "AIzaSyD6bXgBjkl_uRaH5vrVYjciwxdj6FO0F50";
     
     // Initialize the Generative AI client
     const genAI = new GoogleGenerativeAI(API_KEY);
     const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-    // const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
     
     // --- Setup Functions ---
     startCamera();
     setupVoiceCommands();
-    startOrientationSensor(); // Start listening to the phone's compass
+    startOrientationSensor();
 
     // --- Core Functions ---
     async function startCamera() {
@@ -39,11 +38,9 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // New function to listen for compass data
     function startOrientationSensor() {
         if ('DeviceOrientationEvent' in window) {
             window.addEventListener('deviceorientation', (event) => {
-                // event.alpha is the compass direction in degrees (0=North, 90=East)
                 if (event.alpha) {
                     currentCompassHeading = event.alpha;
                 }
@@ -63,21 +60,22 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Updated to understand a new "get_direction" intent
+    // Updated to understand a new "recognize_object" intent
     async function getIntent(commandText) {
         const prompt = `
             You are an intent classifier for a voice-controlled accessibility app.
-            Analyze the user's command and classify it into one of the following categories:
-            'analyze_scene', 'get_direction', or 'unknown'.
-            Only return the category name and nothing else.
+            Classify the command into one of the following categories:
+            'analyze_scene', 'get_direction', 'read_text', 'recognize_currency', 'recognize_object', or 'unknown'.
+            Only return the category name.
 
             --
             Examples:
             Command: "Describe my surroundings" -> Intent: analyze_scene
-            Command: "What am I looking at" -> Intent: analyze_scene
             Command: "Which way should I go" -> Intent: get_direction
-            Command: "Where is the exit" -> Intent: get_direction
-            Command: "Tell me the direction" -> Intent: get_direction
+            Command: "What does this sign say" -> Intent: read_text
+            Command: "Identify this money" -> Intent: recognize_currency
+            Command: "What is this object" -> Intent: recognize_object
+            Command: "Tell me what this is" -> Intent: recognize_object
             Command: "How are you today" -> Intent: unknown
             --
 
@@ -88,7 +86,7 @@ window.addEventListener('DOMContentLoaded', () => {
         try {
             const result = await geminiModel.generateContent(prompt);
             const response = await result.response;
-            const intent = response.text().trim().toLowerCase();
+            const intent = response.text().trim().toLowerCase().replace(/['"]/g, '');
             console.log(`Intent recognized: ${intent}`);
             return intent;
         } catch (error) {
@@ -110,19 +108,20 @@ window.addEventListener('DOMContentLoaded', () => {
         recognition.interimResults = false;
         recognition.lang = 'en-US';
 
-        voiceButton.addEventListener('click', () => recognition.start());
-
-        recognition.onstart = () => {
-            voiceButton.textContent = "Listening...";
-            voiceButton.disabled = true;
-        };
+        voiceButton.addEventListener('click', () => {
+            if (!isBusy) {
+                voiceButton.disabled = true;
+                voiceButton.textContent = "Listening...";
+                recognition.start();
+            }
+        });
         
         recognition.onend = () => {
-            voiceButton.textContent = "🎤"; // Use emoji only for consistency
+            voiceButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>`;
             voiceButton.disabled = false;
         };
 
-        // Updated to handle multiple intents
+        // Updated to handle the new "recognize_object" intent
         recognition.onresult = async (event) => {
             const command = event.results[0][0].transcript.toLowerCase().trim();
             console.log('Voice command heard:', command);
@@ -138,6 +137,18 @@ window.addEventListener('DOMContentLoaded', () => {
                     speak("Okay, looking for a path forward.");
                     performDirectionAnalysis();
                     break;
+                case 'read_text':
+                    speak("Okay, looking for text to read.");
+                    performTextRecognition();
+                    break;
+                case 'recognize_currency':
+                    speak("Okay, identifying the currency.");
+                    performCurrencyRecognition();
+                    break;
+                case 'recognize_object':
+                    speak("Okay, identifying the object.");
+                    performObjectRecognition();
+                    break;
                 default:
                     speak("Sorry, I didn't understand that command.");
                     break;
@@ -147,64 +158,31 @@ window.addEventListener('DOMContentLoaded', () => {
     
     async function performSceneAnalysis() {
         if (isBusy) return;
-        isBusy = true;
-        
         setUIBusyState(true);
-    
         try {
             const imagePart = captureImageAsPart();
-            const prompt = `
-                Act as an accessibility assistant for a visually impaired person. 
-                Describe the scene in a single, fluid sentence. 
-                If a person's emotion is clearly visible, weave it into the description naturally.
-            `;
-            
+            const prompt = `Act as an accessibility assistant. Describe the scene in a single, fluid sentence. If a person's emotion is clearly visible, weave it into the description naturally.`;
             const result = await geminiModel.generateContent([prompt, imagePart]);
             const response = await result.response;
-            let finalSpeech = response.text();
-
-            if (finalSpeech.startsWith("Final Description:")) {
-                finalSpeech = finalSpeech.replace("Final Description:", "").trim();
-            }
-            speak(finalSpeech);
-            console.log(finalSpeech);
-    
+            speak(response.text());
         } catch (error) {
             console.error("Error during scene analysis:", error);
-            if (error.toString().includes("503")) {
-                speak("The AI service is currently busy. Please try again in a moment.");
-            } else {
-                speak("Sorry, I couldn't analyze the scene.");
-            }
+            speak("Sorry, I couldn't analyze the scene.");
         } finally {
             setUIBusyState(false);
         }
     }
 
-    // New function specifically for directional commands
     async function performDirectionAnalysis() {
         if (isBusy) return;
-        isBusy = true;
-
         setUIBusyState(true);
-
         try {
             const imagePart = captureImageAsPart();
             const heading = Math.round(currentCompassHeading);
-
-            const prompt = `
-                Act as a navigation assistant for a visually impaired person.
-                The user is holding their phone, and the camera is pointing forward.
-                The phone's current compass heading is approximately ${heading} degrees (0 is North, 90 is East, 180 is South, 270 is West).
-                Analyze the image to identify the most prominent object, path, or door.
-                Describe its location relative to the user in a short, clear instruction.
-                For example: "There is a door directly in front of you." or "The main hallway continues forward, slightly to your left."
-            `;
-
+            const prompt = `Act as a navigation assistant. The user's phone is pointing forward at a compass heading of ${heading} degrees (0=N, 90=E). Describe the most prominent path or object in a short, clear instruction.`;
             const result = await geminiModel.generateContent([prompt, imagePart]);
             const response = await result.response;
             speak(response.text());
-
         } catch (error) {
             console.error("Error during direction analysis:", error);
             speak("Sorry, I couldn't determine the direction.");
@@ -213,7 +191,58 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Helper function to capture an image
+    async function performTextRecognition() {
+        if (isBusy) return;
+        setUIBusyState(true);
+        try {
+            const imagePart = captureImageAsPart();
+            const prompt = `Act as an accessibility assistant. Perform OCR on the image. Extract and read all text exactly as it appears. If no text is found, respond with "No text found."`;
+            const result = await geminiModel.generateContent([prompt, imagePart]);
+            const response = await result.response;
+            speak(response.text());
+        } catch (error) {
+            console.error("Error during text recognition:", error);
+            speak("Sorry, I was unable to read the text.");
+        } finally {
+            setUIBusyState(false);
+        }
+    }
+
+    async function performCurrencyRecognition() {
+        if (isBusy) return;
+        setUIBusyState(true);
+        try {
+            const imagePart = captureImageAsPart();
+            const prompt = `Act as an accessibility assistant. Identify the currency in the image (banknote or coin). Prioritize Indian Rupees (INR). State the denomination clearly (e.g., "This is a 500 Rupee note."). If unidentifiable, respond with "No currency detected."`;
+            const result = await geminiModel.generateContent([prompt, imagePart]);
+            const response = await result.response;
+            speak(response.text());
+        } catch (error) {
+            console.error("Error during currency recognition:", error);
+            speak("Sorry, I could not identify the currency.");
+        } finally {
+            setUIBusyState(false);
+        }
+    }
+
+    // New function for Object Recognition
+    async function performObjectRecognition() {
+        if (isBusy) return;
+        setUIBusyState(true);
+        try {
+            const imagePart = captureImageAsPart();
+            const prompt = `Act as an accessibility assistant. Identify the single, most prominent object in the center of the image. Respond with a short phrase, for example: "This is a water bottle." or "It looks like a laptop." If no object is clear, say "I can't identify a specific object."`;
+            const result = await geminiModel.generateContent([prompt, imagePart]);
+            const response = await result.response;
+            speak(response.text());
+        } catch (error) {
+            console.error("Error during object recognition:", error);
+            speak("Sorry, I could not identify the object.");
+        } finally {
+            setUIBusyState(false);
+        }
+    }
+
     function captureImageAsPart() {
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth;
@@ -223,7 +252,6 @@ window.addEventListener('DOMContentLoaded', () => {
         return {inlineData: {data: imageDataUrl.split(',')[1], mimeType: 'image/jpeg'}};
     }
 
-    // Helper function to manage the UI state
     function setUIBusyState(busy) {
         isBusy = busy;
         analyzeButton.disabled = busy;
