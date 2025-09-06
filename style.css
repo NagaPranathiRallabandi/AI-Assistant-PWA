@@ -111,27 +111,28 @@ body {
 /* These styles will only apply on screens 600px wide or smaller */
 @media screen and (max-width: 600px) {
     .button-container {
-        bottom: 20px; /* Bring buttons up a bit */
-        gap: 10px; /* Reduce space between buttons */
+        bottom: 25px; /* Give a bit more space from the bottom */
+        gap: 12px; 
     }
 
     #analyzeButton {
-        padding: 14px 22px; /* Smaller padding */
-        font-size: 1em; /* Smaller font */
+        padding: 14px 22px; 
+        font-size: 1em; 
+        white-space: nowrap; /* Prevent text from wrapping */
     }
 
     #voiceButton, #flashButton {
-        width: 55px; /* Smaller circle */
-        height: 55px; /* Smaller circle */
+        width: 55px; 
+        height: 55px; 
     }
 
     #voiceButton svg {
-        width: 24px; /* Smaller icon */
+        width: 24px; 
         height: 24px;
     }
 
     #flashButton svg {
-        width: 20px; /* Smaller icon */
+        width: 20px; 
         height: 20px;
     }
 }
