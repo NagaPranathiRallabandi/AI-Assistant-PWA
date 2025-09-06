@@ -1,6 +1,6 @@
 {
   "name": "Accessibility Assistant",
-  "short_name": "Assistant",
+  "short_name": "VisionMate",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#000000",
