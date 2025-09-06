@@ -13,7 +13,7 @@ window.addEventListener('DOMContentLoaded', () => {
     let currentCompassHeading = 0; // Variable to store the phone's compass direction
     
     // ⚠️ IMPORTANT: Paste your actual API key here!
-    const API_KEY = "AIzaSyDe6kxxxGQH3SBDoeFpeP6nwT0KohyANSc";
+    const API_KEY = "AIzaSyD6bXgBjkl_uRaH5vrVYjciwxdj6FO0F50";
     
     // Initialize the Generative AI client
     const genAI = new GoogleGenerativeAI(API_KEY);
