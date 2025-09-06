@@ -7,6 +7,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const video = document.getElementById('video');
     const analyzeButton = document.getElementById('analyzeButton');
     const voiceButton = document.getElementById('voiceButton');
+    const flashButton = document.getElementById('flashButton'); // New button
     const loadingDiv = document.getElementById('loading');
     
     let isBusy = false;
@@ -31,11 +32,40 @@ window.addEventListener('DOMContentLoaded', () => {
                 video: { facingMode: { ideal: 'environment' } } 
             });
             video.srcObject = stream;
-            video.onloadedmetadata = () => console.log("Camera stream successfully attached.");
+            video.onloadedmetadata = () => {
+                console.log("Camera stream successfully attached.");
+                loadingDiv.style.display = 'none';
+                // Once the camera is ready, setup the flashlight
+                setupFlashlightButton(stream); 
+            };
         } catch (err) {
             console.error("Error accessing camera: ", err);
             alert("Could not access the camera.");
+            loadingDiv.style.display = 'none';
         }
+    }
+
+    // New function to handle the flashlight
+    function setupFlashlightButton(stream) {
+        const videoTrack = stream.getVideoTracks()[0];
+        const capabilities = videoTrack.getCapabilities();
+        
+        // Check if the device's camera supports the torch feature
+        if (!capabilities.torch) {
+            console.warn("Flashlight (torch) is not supported by this device.");
+            return;
+        }
+
+        flashButton.style.display = 'flex'; // Show the button only if supported
+        let isFlashOn = false;
+
+        flashButton.addEventListener('click', () => {
+            isFlashOn = !isFlashOn;
+            videoTrack.applyConstraints({
+                advanced: [{ torch: isFlashOn }]
+            })
+            .catch(e => console.error("Error applying flashlight constraint:", e));
+        });
     }
 
     function startOrientationSensor() {
@@ -60,7 +90,6 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Updated to understand a new "recognize_object" intent
     async function getIntent(commandText) {
         const prompt = `
             You are an intent classifier for a voice-controlled accessibility app.
@@ -75,8 +104,6 @@ window.addEventListener('DOMContentLoaded', () => {
             Command: "What does this sign say" -> Intent: read_text
             Command: "Identify this money" -> Intent: recognize_currency
             Command: "What is this object" -> Intent: recognize_object
-            Command: "Tell me what this is" -> Intent: recognize_object
-            Command: "How are you today" -> Intent: unknown
             --
 
             Command: "${commandText}"
@@ -121,7 +148,6 @@ window.addEventListener('DOMContentLoaded', () => {
             voiceButton.disabled = false;
         };
 
-        // Updated to handle the new "recognize_object" intent
         recognition.onresult = async (event) => {
             const command = event.results[0][0].transcript.toLowerCase().trim();
             console.log('Voice command heard:', command);
@@ -225,7 +251,6 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // New function for Object Recognition
     async function performObjectRecognition() {
         if (isBusy) return;
         setUIBusyState(true);
@@ -256,6 +281,7 @@ window.addEventListener('DOMContentLoaded', () => {
         isBusy = busy;
         analyzeButton.disabled = busy;
         voiceButton.disabled = busy;
+        flashButton.disabled = busy; // Also disable flash button
         loadingDiv.style.display = busy ? 'block' : 'none';
         if (busy) {
             analyzeButton.textContent = "Analyzing...";
