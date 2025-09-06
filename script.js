@@ -12,7 +12,7 @@ window.addEventListener('DOMContentLoaded', () => {
     
     let isBusy = false;
     let currentCompassHeading = 0;
-    let videoTrack = null; // To store the video track for flashlight access
+    let videoTrack = null;
     let isFlashOn = false;
     
     // ⚠️ IMPORTANT: Paste your actual API key here!
@@ -34,7 +34,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 video: { facingMode: { ideal: 'environment' } } 
             });
             video.srcObject = stream;
-            videoTrack = stream.getVideoTracks()[0]; // Store the track
+            videoTrack = stream.getVideoTracks()[0];
             video.onloadedmetadata = () => {
                 console.log("Camera stream successfully attached.");
                 loadingDiv.style.display = 'none';
@@ -60,10 +60,8 @@ window.addEventListener('DOMContentLoaded', () => {
         flashButton.addEventListener('click', () => setFlashlight(!isFlashOn));
     }
 
-    // New refactored function to control the flashlight
     function setFlashlight(state) {
         if (!videoTrack || !videoTrack.getCapabilities().torch) return;
-
         videoTrack.applyConstraints({
             advanced: [{ torch: state }]
         })
@@ -96,14 +94,12 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Updated to understand new flashlight intents
     async function getIntent(commandText) {
         const prompt = `
             You are an intent classifier for a voice-controlled accessibility app.
             Classify the command into one of the following categories:
             'analyze_scene', 'get_direction', 'read_text', 'recognize_currency', 'recognize_object', 'flash_on', 'flash_off', or 'unknown'.
             Only return the category name.
-
             --
             Examples:
             Command: "Describe my surroundings" -> Intent: analyze_scene
@@ -114,11 +110,9 @@ window.addEventListener('DOMContentLoaded', () => {
             Command: "Turn on the flash" -> Intent: flash_on
             Command: "Turn off the light" -> Intent: flash_off
             --
-
             Command: "${commandText}"
             Intent:
         `;
-
         try {
             const result = await geminiModel.generateContent(prompt);
             const response = await result.response;
@@ -138,12 +132,10 @@ window.addEventListener('DOMContentLoaded', () => {
             voiceButton.textContent = "Voice N/A";
             return;
         }
-
         const recognition = new SpeechRecognition();
         recognition.continuous = false;
         recognition.interimResults = false;
         recognition.lang = 'en-US';
-
         voiceButton.addEventListener('click', () => {
             if (!isBusy) {
                 voiceButton.disabled = true;
@@ -151,19 +143,14 @@ window.addEventListener('DOMContentLoaded', () => {
                 recognition.start();
             }
         });
-        
         recognition.onend = () => {
             voiceButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>`;
             voiceButton.disabled = false;
         };
-
-        // Updated to handle the new flashlight intents
         recognition.onresult = async (event) => {
             const command = event.results[0][0].transcript.toLowerCase().trim();
             console.log('Voice command heard:', command);
-
             const intent = await getIntent(command);
-
             switch (intent) {
                 case 'analyze_scene':
                     speak("Okay, analyzing the scene.");
@@ -200,15 +187,92 @@ window.addEventListener('DOMContentLoaded', () => {
         };
     }
     
-    // --- Analysis Functions ---
-    // (The five `perform...` functions go here, unchanged)
-    async function performSceneAnalysis() { /* ... */ }
-    async function performDirectionAnalysis() { /* ... */ }
-    async function performTextRecognition() { /* ... */ }
-    async function performCurrencyRecognition() { /* ... */ }
-    async function performObjectRecognition() { /* ... */ }
+    async function performSceneAnalysis() {
+        if (isBusy) return;
+        setUIBusyState(true);
+        try {
+            const imagePart = captureImageAsPart();
+            const prompt = `Act as an accessibility assistant. Describe the scene in a single, fluid sentence. If a person's emotion is clearly visible, weave it into the description naturally.`;
+            const result = await geminiModel.generateContent([prompt, imagePart]);
+            const response = await result.response;
+            speak(response.text());
+        } catch (error) {
+            console.error("Error during scene analysis:", error);
+            speak("Sorry, I couldn't analyze the scene.");
+        } finally {
+            setUIBusyState(false);
+        }
+    }
 
-    // --- Helper Functions ---
+    async function performDirectionAnalysis() {
+        if (isBusy) return;
+        setUIBusyState(true);
+        try {
+            const imagePart = captureImageAsPart();
+            const heading = Math.round(currentCompassHeading);
+            const prompt = `Act as a navigation assistant. The user's phone is pointing forward at a compass heading of ${heading} degrees (0=N, 90=E). Describe the most prominent path or object in a short, clear instruction.`;
+            const result = await geminiModel.generateContent([prompt, imagePart]);
+            const response = await result.response;
+            speak(response.text());
+        } catch (error) {
+            console.error("Error during direction analysis:", error);
+            speak("Sorry, I couldn't determine the direction.");
+        } finally {
+            setUIBusyState(false);
+        }
+    }
+
+    async function performTextRecognition() {
+        if (isBusy) return;
+        setUIBusyState(true);
+        try {
+            const imagePart = captureImageAsPart();
+            const prompt = `Act as an accessibility assistant. Perform OCR on the image. Extract and read all text exactly as it appears. If no text is found, respond with "No text found."`;
+            const result = await geminiModel.generateContent([prompt, imagePart]);
+            const response = await result.response;
+            speak(response.text());
+        } catch (error) {
+            console.error("Error during text recognition:", error);
+            speak("Sorry, I was unable to read the text.");
+        } finally {
+            setUIBusyState(false);
+        }
+    }
+
+    async function performCurrencyRecognition() {
+        if (isBusy) return;
+        setUIBusyState(true);
+        try {
+            const imagePart = captureImageAsPart();
+            const prompt = `Act as an accessibility assistant. Identify the currency in the image (banknote or coin). Prioritize Indian Rupees (INR). State the denomination clearly (e.g., "This is a 500 Rupee note."). If unidentifiable, respond with "No currency detected."`;
+            const result = await geminiModel.generateContent([prompt, imagePart]);
+            const response = await result.response;
+            speak(response.text());
+        } catch (error) {
+            console.error("Error during currency recognition:", error);
+            speak("Sorry, I could not identify the currency.");
+        } finally {
+            setUIBusyState(false);
+        }
+    }
+
+    async function performObjectRecognition() {
+        if (isBusy) return;
+        setUIBusyState(true);
+        try {
+            const imagePart = captureImageAsPart();
+            const prompt = `Act as an accessibility assistant. Identify the single, most prominent object in the center of the image. Respond with a short phrase, for example: "This is a water bottle." or "It looks like a laptop." If no object is clear, say "I can't identify a specific object."`;
+            const result = await geminiModel.generateContent([prompt, imagePart]);
+            const response = await result.response;
+            speak(response.text());
+        } catch (error) {
+            console.error("Error during object recognition:", error);
+            speak("Sorry, I could not identify the object.");
+        } finally {
+            setUIBusyState(false);
+        }
+    }
+
     function captureImageAsPart() {
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth;
